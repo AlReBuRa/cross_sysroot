@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+import sqlite3
 
 import pkg_resources
 
@@ -72,8 +73,24 @@ def main(args):
     if args.cross_gcc:
         cross_gcc.copy_sysroot(args)
 
+    #
+    # Create Database
+    #
+    sqlite_database_filepath = args.build_root + "/%s-%s-%s-Packages.db" % \
+            (args.distribution, args.distribution_version, args.architecture)
+    if os.path.isfile(sqlite_database_filepath):
+        os.remove(sqlite_database_filepath)
+
+    sql_conn = sqlite3.connect(sqlite_database_filepath)
+    sql_cur = sql_conn.cursor()
+    sql_cur.execute("CREATE TABLE Packages(ID integer primary key autoincrement, "
+                    "Name, Version, Filename, Dependencies)")
+
+    package_database.packages_reset()
+
     # Load distribution database
-    sql_conn = package_database.load_distribution_database(args)
+    package_database.load_distribution_database('main', sql_conn, args)
+    package_database.load_distribution_database('universe', sql_conn, args)
 
     with open(args.package_list_file) as fin:
         for line in fin:

@@ -42,26 +42,19 @@ class PackageNotFound(Exception):
         self.package_name = package_name
 
 
-def load_distribution_database(args):
-    """Load Linux distribution package database."""
+def packages_reset():
     # Re-initialize list of packages to install
     PACKAGES_TO_INSTALL.clear()
 
-    #
-    # Create Database
-    #
-    sqlite_database_filepath = args.build_root + "/%s-%s-%s-Packages.db" % \
-            (args.distribution, args.distribution_version, args.architecture)
-    if os.path.isfile(sqlite_database_filepath):
-        os.remove(sqlite_database_filepath)
-    sql_conn = sqlite3.connect(sqlite_database_filepath)
+
+def load_distribution_database(repo, sql_conn, args):
+    """Load Linux distribution package database."""
+
     sql_cur = sql_conn.cursor()
-    sql_cur.execute("CREATE TABLE Packages(ID integer primary key autoincrement, "
-                    "Name, Version, Filename, Dependencies)")
 
     # Location of 'Packages.gz'
-    distribution_packages_url = args.distribution_url + "dists/%s/main/binary-%s/Packages.gz" % \
-            (args.distribution_version, args.architecture)
+    distribution_packages_url = args.distribution_url + "dists/%s/%s/binary-%s/Packages.gz" % \
+            (args.distribution_version, repo, args.architecture)
     logger.debug("distribution_packages_url:%s", distribution_packages_url)
 
     # Generate the file for the Linux Distribution Packages
@@ -102,7 +95,7 @@ def load_distribution_database(args):
     sql_conn.commit()
     sql_cur.close()
 
-    return sql_conn
+    return
 
 
 def list_similar_package_name(sql_conn, package_name):
@@ -129,8 +122,12 @@ def add_package_dependencies(args, sql_conn, dependencies_str):
         # complex dependency that would solve later
         if '|' in dependency:
             DEPENDENCIES_TO_RESOLVE.append(dependency)
-        else:
-            add_package_from_str(args, sql_conn, dependency)
+            continue
+
+        if dependency.lstrip(' ') == 'libc-dev':
+            continue
+
+        add_package_from_str(args, sql_conn, dependency)
 
 
 def add_package_from_str(args, sql_conn, package_str):
@@ -155,6 +152,10 @@ def add_package_from_str(args, sql_conn, package_str):
 def add_package(args, sql_conn, package_name, version=None, version_type=PackageVersion.NONE):
     """Add package following its version requirement."""
     # TODO: FixMe: For now we strip ':any' from the name
+
+    if package_name == '':
+        return
+
     package_name = package_name.replace(':any', '')
 
     # Check if the package is not already in the list
@@ -182,8 +183,7 @@ def add_package(args, sql_conn, package_name, version=None, version_type=Package
         similar_packages = list_similar_package_name(sql_conn, package_name)
 
         if similar_packages:
-            raise RuntimeError("Cannot find '{0}' did you mean '{1}'".
-                               format(package_name, similar_packages))
+            raise RuntimeError("Cannot find "+ package_name )
         else:
             raise PackageNotFound(package_name)
 
@@ -213,7 +213,10 @@ def download_package(args, local_packages_root, package):
     package_url = args.distribution_url + package['filename']
     logger.info("Download package %s", package_file)
     urlretrieve(package_url, package_file)
-    subprocess.call(["dpkg", "-x", package_file, args.build_root])
+    try:
+        subprocess.run(["dpkg", "-x", package_file, args.gcc_sysroot], check=True)
+    except Exception as err:
+        logger.error("Err:"+str(err))
 
 
 def download_packages(args):
