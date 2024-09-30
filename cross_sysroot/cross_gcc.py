@@ -10,15 +10,11 @@ logger = logging.getLogger(__name__)
 
 def retrieve_gcc_sysroot(cross_gcc):
     """Retrieve sysroot used to build GCC."""
-    p = subprocess.Popen([cross_gcc, '-v'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, err = p.communicate()
+    p = subprocess.run([cross_gcc, '--print-sysroot'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    for line in err.decode('utf-8').split('\n'):
-        # Find the line that contains '--with-sysroot'
-        if '--with-sysroot' in line:
-            for expr in line.split(' '):
-                if '--with-sysroot' in expr:
-                    return expr.split('=')[1]
+
+    for line in p.stdout.decode('utf-8').split('\n'):
+        return line
 
     raise RuntimeError("GCC does not have '--with-sysroot'")
 
