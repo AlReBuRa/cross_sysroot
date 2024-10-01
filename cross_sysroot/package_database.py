@@ -214,7 +214,7 @@ def download_package(args, local_packages_root, package):
     logger.info("Download package %s", package_file)
     urlretrieve(package_url, package_file)
     try:
-        subprocess.run(["dpkg", "-x", package_file, args.gcc_sysroot], check=True)
+        subprocess.run(["dpkg", "-x", package_file, args.where_to], check=True)
     except Exception as err:
         logger.error("Err:"+str(err))
 

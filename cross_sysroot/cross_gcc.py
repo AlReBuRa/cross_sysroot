@@ -35,11 +35,19 @@ def copy_sysroot(args):
     """Copy cross-compiler GCC sysroot into the sysroot directory."""
     gcc_sysroot = retrieve_gcc_sysroot(args.cross_gcc)
 
+    args.where_to = gcc_sysroot
+    print("Use in place sysroot:"+gcc_sysroot)
+    return
+
+    arg.whereto = args.build_root
+
     gcc_fullpath = shutil.which(args.cross_gcc)
     gcc_bin_path = os.path.dirname(gcc_fullpath)
     gcc_root_path = os.path.dirname(gcc_bin_path)
 
     gcc_sysroot_fullpath = os.path.join(gcc_root_path, gcc_sysroot[1:])
+
+    gcc_sysroot_fullpath=gcc_sysroot
 
     logger.info("Copy GCC Sysroot from %s to %s", gcc_sysroot_fullpath, args.build_root)
     copytree(gcc_sysroot_fullpath, args.build_root)
